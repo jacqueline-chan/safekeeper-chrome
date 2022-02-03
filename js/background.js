@@ -17,6 +17,7 @@ var disableScripts;
 var SGXQuote;
 var rng = new SecureRandom();
 
+// turns a base64 quote to an unicode array 
 // There is b64toBA from jsbn that does the same
 function b64quote2ba( quote ) {
     var res = new Uint8Array(1116);
@@ -52,6 +53,7 @@ function compute_shared_key( ecpub, ecprv ) {
     return ecpub.multiply(ecprv);
 }
 
+// 
 function get_ga_from_quote( quote ) {
     var curve = getSECCurveByName( "secp256r1" ).curve;
 
@@ -70,6 +72,9 @@ function get_ga_from_quote( quote ) {
 }
 
 var onIASResponse = function( xhrState, xhrStatus, xhrResponse ) {
+
+    // get a 200 from quote service to verfy it is running safekeeper
+    // display second html page
     if( xhrState == XMLHttpRequest.DONE && xhrStatus == 200 ) {
         console.log( "SafeKeeper: the IAS response is 200 OK" );
         // console.log( xhrResponse );
@@ -97,6 +102,8 @@ var onIASResponse = function( xhrState, xhrStatus, xhrResponse ) {
     }
 }
 
+// new client connection, the browser sends a request to the server, who response with a quote
+
 var onIncomingHeaders = function( details ) {
     // console.log( "SafeKeeper: onHeaders" );
     if( details.responseHeaders === undefined ) {
@@ -106,14 +113,16 @@ var onIncomingHeaders = function( details ) {
     }
 
     // console.log( "SafeKeeper: headers are.", details.responseHeaders );
+    // looking for the quote in the responseHeaders
     details.responseHeaders.forEach( function(v,i,a) {
+      // looking through all the headers for the one key
       if( v.name == "X-SafeKeeper-SGX-Quote" ) {
         SGXQuote = v.value;
         console.log( "SafeKeeper: verifying quote with IAS" );
         req_body = {"isvQuote": v.value};
         var url = "http://ias.proxy";
         var xhr = new XMLHttpRequest();
-        xhr.open( "POST", url, true );
+        xhr.open( "POST", url, true ); // returns a post response
         xhr.onreadystatechange = function() {
             onIASResponse( xhr.readyState, xhr.status, xhr.responseText );
         }
@@ -198,3 +207,23 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
                     storageChange.oldValue, storageChange.newValue);
     }
 });
+
+
+
+
+/**
+ *1. Browser fetches page from website
+* 2. content.js looks for a meta tag saying "SGXEnabled" in that page
+3. IF it's there, then it stores that in some variable that background.js can access
+4. background.js looks for the quote in the HTTP response header from the website ()
+5. Background.js sends the quote to the Intel Attestation Service (IAS)
+
+ *  When the DOM loads, using the meta tag of webpage/html, we know whether or not SGX is enabled.
+ * based on the number of meta tags found (more than 0), send a response to indicate SGX is enabled
+ * in background.js, read the headers of such response, line 100, onIASResponse then checks with the proxy
+ * of the quote. 
+ * 
+ * quote is from the website, verify with proxy the quote validation with function onIASResponse, to generates DH keys
+ * 
+ * 
+ */

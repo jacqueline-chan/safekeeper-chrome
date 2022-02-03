@@ -273,6 +273,7 @@ $(document).ready(function() {
                     click = true;
                 }
             }
+        // respond if SGX is enabled on the webpage
         } else if (request.check === "SGXEnabled?") {
             if(sgx_enabled == false) {
                 sendResponse({answer: "SGXNotEnabled"});
